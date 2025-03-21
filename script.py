@@ -2,6 +2,7 @@ import markdown
 import os
 import hashlib
 import shutil
+import webbrowser
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext
@@ -105,6 +106,40 @@ def process_md_content(md_content: str, filename: str):
 
     messagebox.showinfo("Succès", f"✔️ HTML généré pour {filename}.")
 
+# Affiche le contenu d'un fichier ou ouvre le HTML si c'est un dossier
+def open_from_list(event):
+    selection = file_listbox.curselection()
+    if selection:
+        filename = file_listbox.get(selection[0])
+        filepath = MARKDOWN_DIR / filename
+        if filepath.is_dir():
+            md_file = filepath / f"{filename}.md"
+            html_file = filepath / f"{filename}.html"
+            if md_file.exists():
+                with open(md_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                text_area.delete("1.0", tk.END)
+                text_area.insert(tk.END, content)
+                filename_entry.delete(0, tk.END)
+                filename_entry.insert(0, md_file.name)
+            if html_file.exists():
+                if messagebox.askyesno("Ouvrir HTML", f"Voulez-vous ouvrir {html_file.name} dans votre navigateur ?"):
+                    webbrowser.open(html_file.resolve().as_uri())
+        elif filepath.suffix == ".md":
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+            text_area.delete("1.0", tk.END)
+            text_area.insert(tk.END, content)
+            filename_entry.delete(0, tk.END)
+            filename_entry.insert(0, filename)
+
+# Met à jour la liste des fichiers et dossiers Markdown
+def update_file_list():
+    file_listbox.delete(0, tk.END)
+    for item in sorted(MARKDOWN_DIR.iterdir()):
+        file_listbox.insert(tk.END, item.name)
+    root.after(5000, update_file_list)  # Vérifie les fichiers et dossiers toutes les 5 secondes
+
 # Interface graphique épurée et moderne
 def open_file():
     filepath = filedialog.askopenfilename(filetypes=[("Markdown files", "*.md")])
@@ -124,26 +159,32 @@ def export_html():
         messagebox.showerror("Erreur", "Veuillez fournir un contenu Markdown et un nom de fichier.")
         return
     process_md_content(content, filename)
+    update_file_list()
 
 root = tk.Tk()
 root.title("Markdown ➜ HTML")
-root.geometry("880x560")
+root.geometry("1080x560")
 root.configure(bg="#1c1c1c")
 
 font_family = ("Segoe UI", 11)
 
 filename_entry = tk.Entry(root, font=font_family, bg="#2c2c2c", fg="white", insertbackground="white", relief="flat")
-filename_entry.place(x=20, y=20, width=600, height=30)
+filename_entry.place(x=220, y=20, width=500, height=30)
 filename_entry.insert(0, "nom_du_fichier.md")
 
 browse_btn = tk.Button(root, text="📂", command=open_file, font=font_family, bg="#3a3a3a", fg="white", relief="flat")
-browse_btn.place(x=630, y=20, width=40, height=30)
+browse_btn.place(x=730, y=20, width=40, height=30)
 
 generate_btn = tk.Button(root, text="🚀 Générer HTML", command=export_html, font=font_family, bg="#0066cc", fg="white", relief="flat")
-generate_btn.place(x=690, y=20, width=160, height=30)
+generate_btn.place(x=780, y=20, width=160, height=30)
 
-text_area = scrolledtext.ScrolledText(root, wrap=tk.WORD, bg="#1e1e1e", fg="white", insertbackground="white",
-                                      font=("Consolas", 11), borderwidth=0)
-text_area.place(x=20, y=70, width=840, height=460)
+file_listbox = tk.Listbox(root, bg="#2c2c2c", fg="white", font=font_family, relief="flat")
+file_listbox.place(x=20, y=20, width=180, height=520)
+file_listbox.bind("<<ListboxSelect>>", open_from_list)
+
+text_area = scrolledtext.ScrolledText(root, wrap=tk.WORD, bg="#1e1e1e", fg="white", insertbackground="white", font=("Consolas", 11), borderwidth=0)
+text_area.place(x=220, y=70, width=820, height=470)
+
+update_file_list()
 
 root.mainloop()
