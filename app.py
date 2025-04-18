@@ -3,7 +3,7 @@ import os
 import io
 import pdfkit
 from werkzeug.utils import secure_filename
-from markdown_parser import simple_markdown_to_html
+from markdown_parser import markdown_to_html  # ✅ nouvelle fonction
 
 app = Flask(__name__)
 
@@ -24,7 +24,7 @@ def convert():
     else:
         content = request.form.get('markdown', '')
 
-    html_body = simple_markdown_to_html(content)
+    html_body = markdown_to_html(content)  # ✅ fonction mise à jour
 
     if output_type == 'html':
         return html_body
@@ -70,7 +70,6 @@ def convert():
 </html>
 """
         config = pdfkit.configuration(wkhtmltopdf=os.path.abspath("exe/wkhtmltopdf.exe"))
-        # Générer dans un objet mémoire
         pdf_data = pdfkit.from_string(full_html, False, configuration=config)
         return send_file(
             io.BytesIO(pdf_data),

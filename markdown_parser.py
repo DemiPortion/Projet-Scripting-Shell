@@ -1,97 +1,111 @@
+
 import re
 
-def simple_markdown_to_html(md_text):
-    # Titres h1 à h6
-    for i in range(6, 0, -1):
-        pattern = r'^' + ('#' * i) + r' (.*)'
-        replacement = f'<h{i}>\\1</h{i}>'
-        md_text = re.sub(pattern, replacement, md_text, flags=re.MULTILINE)
+def markdown_to_html(text):
+    def replace_code_blocks(text):
+        return re.sub(r'```(.*?)```', r'<pre><code>\1</code></pre>', text, flags=re.DOTALL)
 
-    # Préparation
-    lines = md_text.split("\n")
-    processed = []
-    in_ul = False
-    in_ol = False
-    in_code_block = False
+    def replace_inline_code(text):
+        return re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
 
-    for line in lines:
-        stripped = line.strip()
+    def replace_headers(text):
+        for i in range(6, 0, -1):
+            pattern = r'^(#{' + str(i) + r'})\s+(.+)$'
+            repl = r'<h' + str(i) + r'>\2</h' + str(i) + r'>'
+            text = re.sub(pattern, repl, text, flags=re.MULTILINE)
+        return text
 
-        # Bloc de code (début/fin)
-        if stripped.startswith("```"):
-            if in_code_block:
-                processed.append("</code></pre>")
-                in_code_block = False
+    def replace_bold_italic(text):
+        text = re.sub(r'\*\*\*(.+?)\*\*\*', r'<strong><em>\1</em></strong>', text)
+        text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+        text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
+        text = re.sub(r'~~(.+?)~~', r'<del>\1</del>', text)
+        return text
+
+    def replace_links_images(text):
+        text = re.sub(r'!\[(.*?)\]\((.*?)\)', r'<img src="\2" alt="\1">', text)
+        text = re.sub(r'\[(.*?)\]\((.*?)\)', r'<a href="\2">\1</a>', text)
+        return text
+
+    def replace_blockquotes(text):
+        lines = text.split("\n")
+        new_lines = []
+        for line in lines:
+            if line.startswith(">"):
+                new_lines.append("<blockquote>" + line[1:].strip() + "</blockquote>")
             else:
-                processed.append("<pre><code>")
-                in_code_block = True
-            continue
+                new_lines.append(line)
+        return "\n".join(new_lines)
 
-        if in_code_block:
-            processed.append(stripped)
-            continue
+    def replace_lists(text):
+        lines = text.split("\n")
+        html = []
+        in_ul, in_ol = False, False
+        for line in lines:
+            if re.match(r'^\s*[-+*]\s+', line):
+                if not in_ul:
+                    html.append("<ul>")
+                    in_ul = True
+                html.append(f"<li>{line.strip()[2:].strip()}</li>")
+            elif re.match(r'^\s*\d+\.\s+', line):
+                if not in_ol:
+                    html.append("<ol>")
+                    in_ol = True
+                html.append(re.sub(r'^\s*\d+\.\s+', '<li>', line.strip()) + "</li>")
+            else:
+                if in_ul:
+                    html.append("</ul>")
+                    in_ul = False
+                if in_ol:
+                    html.append("</ol>")
+                    in_ol = False
+                html.append(line)
+        if in_ul:
+            html.append("</ul>")
+        if in_ol:
+            html.append("</ol>")
+        return "\n".join(html)
 
-        # Liste à puces
-        if re.match(r'^- ', stripped):
-            if not in_ul:
-                processed.append('<ul>')
-                in_ul = True
-            processed.append(f'<li>{stripped[2:].strip()}</li>')
-            continue
-        elif in_ul:
-            processed.append('</ul>')
-            in_ul = False
+    def replace_tables(text):
+        lines = text.split("\n")
+        new_lines = []
+        in_table = False
+        for i, line in enumerate(lines):
+            if "|" in line:
+                if not in_table:
+                    new_lines.append("<table>")
+                    in_table = True
+                cells = line.strip().split("|")[1:-1]
+                tag = "th" if re.match(r"^\s*\|?\s*:?[-]+:?", line) else "td"
+                new_lines.append("<tr>" + "".join([f"<{tag}>{cell.strip()}</{tag}>" for cell in cells]) + "</tr>")
+            else:
+                if in_table:
+                    new_lines.append("</table>")
+                    in_table = False
+                new_lines.append(line)
+        if in_table:
+            new_lines.append("</table>")
+        return "\n".join(new_lines)
 
-        # Liste ordonnée
-        if re.match(r'^\d+\. ', stripped):
-            if not in_ol:
-                processed.append('<ol>')
-                in_ol = True
-            processed.append(re.sub(r'^\d+\.\s+', '<li>', stripped) + '</li>')
-            continue
-        elif in_ol:
-            processed.append('</ol>')
-            in_ol = False
+    def replace_hr(text):
+        return re.sub(r'^(\*{3,}|-{3,}|_{3,})$', r'<hr>', text, flags=re.MULTILINE)
 
-        # Citation
-        if stripped.startswith("> "):
-            processed.append(f'<blockquote>{stripped[2:].strip()}</blockquote>')
-            continue
+    text = replace_code_blocks(text)
+    text = replace_inline_code(text)
+    text = replace_headers(text)
+    text = replace_bold_italic(text)
+    text = replace_links_images(text)
+    text = replace_blockquotes(text)
+    text = replace_lists(text)
+    text = replace_tables(text)
+    text = replace_hr(text)
 
-        # Ligne horizontale
-        if re.match(r'^(\*\*\*|---|___)$', stripped):
-            processed.append('<hr>')
-            continue
-
-        # Code en ligne
-        line = re.sub(r'`([^`]+)`', r'<code>\1</code>', stripped)
-
-        # Gras, italique, barré
-        line = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', line)
-        line = re.sub(r'__(.*?)__', r'<em>\1</em>', line)
-        line = re.sub(r'~~(.*?)~~', r'<del>\1</del>', line)
-
-        # Image et lien
-        line = re.sub(r'!\[(.*?)\]\((.*?)\)', r'<img src="\2" alt="\1">', line)
-        line = re.sub(r'\[(.*?)\]\((.*?)\)', r'<a href="\2">\1</a>', line)
-
-        # Paragraphe (évite les balises vides)
-        if line:
-            processed.append(f'<p>{line}</p>')
-
-    # Fermeture éventuelle
-    if in_ul:
-        processed.append('</ul>')
-    if in_ol:
-        processed.append('</ol>')
-    if in_code_block:
-        processed.append('</code></pre>')
-
-    # Nettoyage des lignes vides en trop
-    cleaned = []
-    for i, line in enumerate(processed):
-        if line == "" and (i == 0 or processed[i - 1] == ""):
-            continue
-        cleaned.append(line)
-
-    return "\n".join(cleaned)
+    # Paragraphe final
+    lines = text.split("\n")
+    output = []
+    for line in lines:
+        if line.strip() and not re.match(r'^<(/?(h\d|ul|ol|li|pre|code|blockquote|table|tr|td|th|hr|img|a))', line.strip()):
+            output.append(f"<p>{line.strip()}</p>")
+        else:
+            output.append(line)
+    return "\n".join(output)

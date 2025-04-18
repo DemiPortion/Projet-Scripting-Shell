@@ -7,17 +7,6 @@
 ---
 
 
-- ```
-    Tiret
-    ```
-    -   titre
-        ```
-    ```
-
-```
-# Test 1
-``` 
-
 ## Cas 1 – Cloud noir : migrer vers un cloud privé chinois soumis à un régime autoritaire
 
 ### 📌 Résumé du contexte
