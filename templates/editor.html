@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Convertisseur Markdown</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script>
+        function handleFileInput(input) {
+            const textarea = document.querySelector('textarea[name="markdown"]');
+            const cancelBtn = document.getElementById('cancelFileBtn');
+            if (input.files.length > 0) {
+                textarea.disabled = true;
+                textarea.placeholder = "Zone désactivée : un fichier est sélectionné.";
+                textarea.style.backgroundColor = "#444";
+                cancelBtn.style.display = 'inline-block';
+            } else {
+                textarea.disabled = false;
+                textarea.placeholder = "Écris ton Markdown ici...";
+                textarea.style.backgroundColor = "#1e1e1e";
+                cancelBtn.style.display = 'none';
+            }
+        }
+
+        function removeFile() {
+            const fileInput = document.querySelector('input[name="md_file"]');
+            const textarea = document.querySelector('textarea[name="markdown"]');
+            const cancelBtn = document.getElementById('cancelFileBtn');
+
+            fileInput.value = '';
+            textarea.disabled = false;
+            textarea.placeholder = "Écris ton Markdown ici...";
+            textarea.style.backgroundColor = "#1e1e1e";
+            cancelBtn.style.display = 'none';
+        }
+
+        function handleSubmit(event) {
+            event.preventDefault();
+            const form = document.getElementById('mdForm');
+            const formData = new FormData(form);
+            const outputType = form.querySelector('button[type="submit"][clicked="true"]').value;
+            formData.set('output_type', outputType);
+
+            fetch('/convert', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (outputType === 'html') {
+                    return response.text().then(html => {
+                        document.getElementById('preview').innerHTML = html;
+                    });
+                } else if (outputType === 'pdf') {
+                    return response.blob().then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = (form.filename.value || "document") + ".pdf";
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(url);
+                    });
+                }
+            });
+        }
+
+        window.onload = () => {
+            const buttons = document.querySelectorAll('button[type="submit"]');
+            buttons.forEach(btn => {
+                btn.addEventListener("click", () => {
+                    buttons.forEach(b => b.removeAttribute("clicked"));
+                    btn.setAttribute("clicked", "true");
+                });
+            });
+        }
+    </script>
+</head>
+<body>
+    <div class="main-container">
+        <div class="editor-section">
+            <h1>Convertisseur Markdown</h1>
+            <form id="mdForm" method="post" enctype="multipart/form-data" onsubmit="handleSubmit(event)">
+                <div class="mode-section">
+                    <h3>✍️ Écris ton Markdown :</h3>
+                    <textarea name="markdown" placeholder="Écris ton Markdown ici..."># Exemple</textarea>
+                </div>
+
+                <div class="mode-section">
+                    <h3>📄 Ou importe un fichier Markdown :</h3>
+                    <input type="file" name="md_file" accept=".md" onchange="handleFileInput(this)">
+                    <button type="button" id="cancelFileBtn" onclick="removeFile()" style="display:none; margin-top: 0.5em; background-color: #666;">Annuler le fichier sélectionné</button>
+                </div>
+
+                <input type="text" name="filename" placeholder="Nom du fichier (sans extension)" required>
+
+                <div class="buttons">
+                    <button type="submit" name="output_type" value="html">Convertir en HTML</button>
+                    <button type="submit" name="output_type" value="pdf">Convertir en PDF</button>
+                </div>
+            </form>
+        </div>
+        <div class="preview-section" id="preview">
+            <p>Aperçu HTML...</p>
+        </div>
+    </div>
+</body>
+</html>
