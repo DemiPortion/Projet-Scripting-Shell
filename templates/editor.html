@@ -49,16 +49,20 @@
                     return response.text().then(html => {
                         document.getElementById('preview').innerHTML = html;
                     });
-                } else if (outputType === 'pdf') {
+                } else if (outputType === 'pdf' || outputType === 'slides-pdf') {
                     return response.blob().then(blob => {
                         const url = window.URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
-                        a.download = (form.filename.value || "document") + ".pdf";
+                        a.download = (form.filename.value || "document") + (outputType === 'pdf' ? ".pdf" : "_slides.pdf");
                         document.body.appendChild(a);
                         a.click();
                         a.remove();
                         window.URL.revokeObjectURL(url);
+                    });
+                } else if (outputType === 'slides') {
+                    return response.text().then(html => {
+                        document.getElementById('preview').innerHTML = html;
                     });
                 }
             });
@@ -96,6 +100,8 @@
                 <div class="buttons">
                     <button type="submit" name="output_type" value="html">Afficher en HTML</button>
                     <button type="submit" name="output_type" value="pdf">Télécharger en PDF</button>
+                    <button type="submit" name="output_type" value="slides">Afficher en Slides</button>
+                    <button type="submit" name="output_type" value="slides-pdf">Télécharger en Slides (PDF)</button>
                 </div>
             </form>
         </div>

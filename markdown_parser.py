@@ -1,4 +1,3 @@
-
 import re
 
 def markdown_to_html(text):
@@ -70,7 +69,7 @@ def markdown_to_html(text):
         lines = text.split("\n")
         new_lines = []
         in_table = False
-        for i, line in enumerate(lines):
+        for line in lines:
             if "|" in line:
                 if not in_table:
                     new_lines.append("<table>")
@@ -100,7 +99,6 @@ def markdown_to_html(text):
     text = replace_tables(text)
     text = replace_hr(text)
 
-    # Paragraphe final
     lines = text.split("\n")
     output = []
     for line in lines:
@@ -109,3 +107,65 @@ def markdown_to_html(text):
         else:
             output.append(line)
     return "\n".join(output)
+
+def markdown_to_slides(text):
+    html = markdown_to_html(text)
+    slides = []
+    current_slide = []
+
+    for line in html.split('\n'):
+        if line.strip().startswith('<h1>'):
+            if current_slide:
+                slides.append('<section class="slide">\n' + '\n'.join(current_slide) + '\n</section>')
+                current_slide = []
+        current_slide.append(line)
+
+    if current_slide:
+        slides.append('<section class="slide">\n' + '\n'.join(current_slide) + '\n</section>')
+
+    return f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Présentation PDF</title>
+    <style>
+        * {{
+            box-sizing: border-box;
+        }}
+        body {{
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: #111;
+            color: white;
+        }}
+        .slide {{
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 60px;
+            page-break-after: always;
+        }}
+        .slide h1, .slide h2, .slide h3 {{
+            color: #00aced;
+            margin-bottom: 20px;
+        }}
+        .slide p {{
+            max-width: 80%;
+            text-align: center;
+            font-size: 1.3em;
+            line-height: 1.6;
+        }}
+        .slide img {{
+            max-width: 80%;
+            max-height: 400px;
+            margin-top: 20px;
+        }}
+    </style>
+</head>
+<body>
+{''.join(slides)}
+</body>
+</html>"""
