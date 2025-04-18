@@ -1,9 +1,9 @@
 from flask import Flask, render_template, request, send_file
 import os
-import markdown
+import io
 import pdfkit
 from werkzeug.utils import secure_filename
-import io
+from markdown_parser import simple_markdown_to_html
 
 app = Flask(__name__)
 
@@ -24,7 +24,7 @@ def convert():
     else:
         content = request.form.get('markdown', '')
 
-    html_body = markdown.markdown(content, extensions=['fenced_code', 'codehilite'])
+    html_body = simple_markdown_to_html(content)
 
     if output_type == 'html':
         return html_body
